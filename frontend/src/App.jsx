@@ -436,9 +436,11 @@ function App() {
                       {((details.required_documents_structured || details.required_documents) || []).map((doc, idx) => {
                         let docType = "";
                         let isMandatory = false;
+                        let supportingDocs = [];
                         if (doc && typeof doc === 'object') {
                           docType = doc.document_type;
                           isMandatory = (doc.mandatory || '').toLowerCase() === 'yes' || (doc.mandatory || '').trim() === 'हाँ';
+                          supportingDocs = doc.supporting_documents || [];
                         } else if (typeof doc === 'string') {
                           const match = doc.match(/(.*?)\s*\(Mandatory:\s*(.*?)\)/);
                           if (match) {
@@ -450,14 +452,30 @@ function App() {
                           }
                         }
                         return (
-                          <div key={idx} className="document-card">
-                            <div className="document-info">
-                              <span className="document-bullet"></span>
-                              <span className="document-name">{docType}</span>
+                          <div key={idx} className="document-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                              <div className="document-info">
+                                <span className="document-bullet"></span>
+                                <span className="document-name" style={{ fontWeight: 600 }}>{docType}</span>
+                              </div>
+                              <span className={`document-badge ${isMandatory ? 'mandatory' : 'optional'}`}>
+                                {isMandatory ? t.mandatory : t.optional}
+                              </span>
                             </div>
-                            <span className={`document-badge ${isMandatory ? 'mandatory' : 'optional'}`}>
-                              {isMandatory ? t.mandatory : t.optional}
-                            </span>
+                            {supportingDocs.length > 1 && (
+                              <div style={{ paddingLeft: '18px', borderTop: '1px dashed var(--border-color)', paddingTop: '6px', marginTop: '2px', textAlign: 'left' }}>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600 }}>
+                                  {lang === 'hi' ? 'निम्नलिखित में से कोई एक:' : 'Any one of the following:'}
+                                </div>
+                                <ul style={{ listStyleType: 'circle', paddingLeft: '14px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                  {supportingDocs.map((sub, sIdx) => (
+                                    <li key={sIdx} style={{ marginBottom: '2px' }}>
+                                      {sub.name}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
                           </div>
                         );
                       })}

@@ -164,11 +164,12 @@ def convert_json_to_markdown(json_data, lang="en", exclude_form_fields=False):
                 
                 # Sub-documents list
                 sub_docs = d.get("supporting_documents", [])
-                for sub_idx, sub in enumerate(sub_docs):
-                    sub_name = sub.get("name", "").strip()
-                    pdf_link = sub.get("format_link", "").strip()
-                    link_str = f" (Format/प्रारूप: {pdf_link})" if pdf_link else ""
-                    md.append(f"  * Option {sno_val}.{sub_idx+1}: {sub_name}{link_str}")
+                if len(sub_docs) > 1:
+                    for sub_idx, sub in enumerate(sub_docs):
+                        sub_name = sub.get("name", "").strip()
+                        pdf_link = sub.get("format_link", "").strip()
+                        link_str = f" (Format/प्रारूप: {pdf_link})" if pdf_link else ""
+                        md.append(f"  * Option {sno_val}.{sub_idx+1}: {sub_name}{link_str}")
             elif isinstance(d, str):
                 # parse format like: "Affidavit (Mandatory: Yes)"
                 match = re.match(r'(.*?)\s*\(Mandatory:\s*(.*?)\)', d)
