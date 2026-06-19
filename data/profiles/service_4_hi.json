@@ -4,7 +4,7 @@
   "name": "अनुसूचित जाति / अनुसूचित जनजाति प्रमाण पत्र",
   "department": "राजस्व एवं आपदा प्रबंधन विभाग",
   "category": "",
-  "sla": "समय सीमा",
+  "sla": "22 दिन",
   "required_documents": [
     "निवास का प्रमाण (Mandatory: नहीं)",
     "जाति का प्रमाण (Mandatory: हाँ)",
@@ -20,12 +20,17 @@
     "raw_text": "आवेदन कहाँ करें? सेवा सेतु केंद्र : ₹30.0 ऑनलाइन : ₹30.0"
   },
   "contact_details": "सेवा सेतु केंद्र",
-  "time_limit": "समय सीमा",
+  "time_limit": "22 दिन",
   "pdf_links": [
     {
       "type": "instruction",
       "text": "देखें",
       "url": "https://sewasetu.cgstate.gov.in/resources/edistrict/user-manual/new/4.pdf"
+    },
+    {
+      "type": "sla_details",
+      "text": "समय सीमा",
+      "url": "https://sewasetu.cgstate.gov.in/resources/docFormat/citizenCharter.pdf"
     }
   ],
   "how_to_apply": "https://sewasetu.cgstate.gov.in/home?lang=hi",
@@ -607,6 +612,11 @@
       "source_url": "https://sewasetu.cgstate.gov.in/resources/edistrict/user-manual/new/4.pdf",
       "type": "instruction",
       "local_path": "data/pdfs/4_hi_4.pdf"
+    },
+    {
+      "source_url": "https://sewasetu.cgstate.gov.in/resources/docFormat/citizenCharter.pdf",
+      "type": "sla_details",
+      "local_path": "data/pdfs/4_hi_citizenCharter.pdf"
     }
   ],
   "combined_manual_text_path": "data/extracted_text/combined_manual_4_hi.txt"

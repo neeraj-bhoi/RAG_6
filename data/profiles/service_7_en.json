@@ -25,6 +25,11 @@
       "type": "user_manual",
       "text": "view",
       "url": "https://sewasetu.cgstate.gov.in/resources/edistrict/user-manual/new/7.pdf"
+    },
+    {
+      "type": "sla_details",
+      "text": "Service SLA Details",
+      "url": "https://sewasetu.cgstate.gov.in/resources/docFormat/citizenCharter.pdf"
     }
   ],
   "how_to_apply": "https://sewasetu.cgstate.gov.in/home?lang=en",
@@ -370,6 +375,11 @@
       "source_url": "https://sewasetu.cgstate.gov.in/resources/edistrict/user-manual/new/7.pdf",
       "type": "user_manual",
       "local_path": "data/pdfs/7_en_7.pdf"
+    },
+    {
+      "source_url": "https://sewasetu.cgstate.gov.in/resources/docFormat/citizenCharter.pdf",
+      "type": "sla_details",
+      "local_path": "data/pdfs/7_en_citizenCharter.pdf"
     }
   ],
   "combined_manual_text_path": "data/extracted_text/combined_manual_7_en.txt"

@@ -1,4 +1,10 @@
 import os
+import sys
+
+# Configure stdout to use UTF-8 to prevent timing emoji print crashes on Windows
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8')
+
 import json
 import time
 import requests
@@ -242,17 +248,23 @@ async def chat_with_bot(request: ChatRequest):
     for sno in target_snos:
         meta_doc = metadata_docs.get(sno)
         if meta_doc:
-            header = "[Official Service Specification Profile]"
+            header = f"[Official Service Specification Profile for Service SNo {sno}]"
             chunk_text = f"{header}\n{meta_doc}"
-            if current_length + len(chunk_text) <= budget:
+            remaining = budget - current_length
+            if remaining > 500:
+                if len(chunk_text) > remaining:
+                    chunk_text = chunk_text[:remaining]
                 context_parts.append(chunk_text)
                 current_length += len(chunk_text)
                 
         manual_text = manual_contents.get(sno)
         if manual_text:
-            header = "[User Manual & Guidelines]"
+            header = f"[User Manual & Guidelines for Service SNo {sno}]"
             chunk_text = f"{header}\n{manual_text}"
-            if current_length + len(chunk_text) <= budget:
+            remaining = budget - current_length
+            if remaining > 1000:
+                if len(chunk_text) > remaining:
+                    chunk_text = chunk_text[:remaining]
                 context_parts.append(chunk_text)
                 current_length += len(chunk_text)
                 
@@ -264,11 +276,14 @@ async def chat_with_bot(request: ChatRequest):
             chunk_text = f"{source_label}\n{doc_text}"
             chunk_len = len(chunk_text)
             
-            if current_length + chunk_len > budget:
+            remaining = budget - current_length
+            if remaining > 500:
+                if chunk_len > remaining:
+                    chunk_text = chunk_text[:remaining]
+                context_parts.append(chunk_text)
+                current_length += len(chunk_text)
+            else:
                 break
-                
-            context_parts.append(chunk_text)
-            current_length += chunk_len
             
     retrieved_context = "\n\n---\n\n".join(context_parts)
 
@@ -290,9 +305,15 @@ async def chat_with_bot(request: ChatRequest):
             "आप SewaSetu (सेवा सेतु) छत्तीसगढ़ पोर्टल के एक विशेषज्ञ सहायक हैं।\n"
             "आपका उद्देश्य नागरिकों को सरकारी सेवाओं के आवेदन, आवश्यक दस्तावेजों और शुल्कों को समझने में मदद करना है।\n\n"
             "उत्तर देने के लिए केवल और केवल प्रदान किए गए संदर्भ (Context) का उपयोग करें। ढांचेगत आवश्यकताओं, समय सीमा (SLA), शुल्क और आवश्यक दस्तावेजों के लिए '[Official Service Specification Profile]' वाले हिस्से को ही अंतिम और प्राथमिक आधार मानें। विस्तृत विवरण, दिशा-निर्देशों या चरण-दर-चरण निर्देशों के लिए '[User Manual & Guidelines]' वाले हिस्सों का उपयोग करें।\n\n"
+            "तार्किक निष्कर्ष और समझ (Reasoning and Logical Deduction):\n"
+            "- आपको संदर्भ के क्षेत्रों (जैसे 'आवेदन कहाँ करें', 'शुल्क', 'SLA', 'विभाग') से तार्किक निष्कर्ष निकालकर उत्तर देना चाहिए। उदाहरण के लिए, यदि उपयोगकर्ता पूछता है कि 'क्या मैं ऑफलाइन आवेदन कर सकता हूँ?' और संदर्भ में 'कहाँ आवेदन करें: सेवा सेतु केंद्र, ऑनलाइन' दिया गया है, तो आपको स्पष्ट उत्तर देना चाहिए: 'नहीं, आप केवल ऑनलाइन या सेवा सेतु केंद्र पर जाकर ही आवेदन कर सकते हैं।' सीधे 'जानकारी उपलब्ध नहीं है' न कहें।\n"
+            "- यदि उपयोगकर्ता विभाग या प्राधिकारी के बारे में पूछता है, और संदर्भ में विभाग का नाम दिया गया है, तो उल्लेख करें कि यह सेवा उस विभाग द्वारा प्रबंधित की जाती है।\n"
+            "- केवल तभी 'जानकारी उपलब्ध नहीं है।' का उत्तर दें जब वह सेवा या विषय संदर्भ में बिल्कुल भी मौजूद न हो (जैसे किसी ऐसी सेवा के बारे में पूछने पर जो संदर्भ में नहीं है)।\n\n"
             "यदि संदर्भ में उपयोगकर्ता के प्रश्न का उत्तर पर्याप्त रूप से उपलब्ध नहीं है, तो आपको अनिवार्य रूप से केवल यही उत्तर देना होगा: 'जानकारी उपलब्ध नहीं है।' और कुछ भी नहीं जोड़ना है। अपनी ओर से कोई काल्पनिक बात या बाहरी ज्ञान का उपयोग न करें।\n\n"
             "भाषा निर्देश (Language Instruction):\n"
             "- आप उपयोगकर्ता के प्रश्न के अनुसार किसी भी भाषा (हिंदी, अंग्रेजी, या हिंग्लिश) में उत्तर दे सकते हैं। उपयोगकर्ता जिस भाषा (या हिंग्लिश) में बात कर रहा है, उसी के अनुकूल भाषा का चयन करें।\n\n"
+            "उपयोगकर्ता के उद्देश्य को समझें (Understand User Intent):\n"
+            "- यदि उपयोगकर्ता कहता है कि वह कोई प्रमाण पत्र या सेवा 'बनाना चाहता है' (जैसे 'मैं ST प्रमाण पत्र बनाना चाहता हूँ', 'शादी प्रमाण पत्र के लिए आवेदन करना है'), तो इसका मतलब है कि वह आवेदन करने की प्रक्रिया (process of how to do it) जानना चाहता है। ऐसे मामलों में, आपको '[User Manual & Guidelines]' से आवेदन करने की चरण-दर-चरण प्रक्रिया (step-by-step application steps/process) को प्राथमिकता देकर समझाना चाहिए, न कि केवल आवश्यक दस्तावेजों की सूची प्रदान करनी चाहिए।\n\n"
             "आवश्यक दस्तावेजों के लिए महत्वपूर्ण निर्देश:\n"
             "- आपको आवश्यक दस्तावेजों की सूची केवल और केवल '[Official Service Specification Profile]' खंड से प्राप्त करनी होगी। आवश्यक दस्तावेजों की सूची के लिए '[User Manual & Guidelines]' को न देखें, क्योंकि यह अपूर्ण, कटी हुई या विरोधाभासी हो सकती है।\n"
             "- आपको संदर्भ में '## Required Documents' (या '## आवश्यक दस्तावेज़') के अंतर्गत '[Official Service Specification Profile]' में दी गई प्रत्येक दस्तावेज़ श्रेणी (जैसे Category [1], Category [2] आदि) को अनिवार्य रूप से पूरी तरह सूचीबद्ध करना होगा।\n"
@@ -308,9 +329,16 @@ async def chat_with_bot(request: ChatRequest):
         system_instruction = (
             "You are an expert assistant for the SewaSetu Chhattisgarh portal.\n"
             "Your goal is to help citizens understand how to apply for services, check required documents, kiosk/online fees, and timelines.\n\n"
-            "Answer the question using ONLY the relevant context below. Use the '[Official Service Specification Profile]' chunk as the absolute primary authority for structured requirements, SLAs, fees, and required documents. Use the '[User Manual & Guidelines]' chunks for details, descriptions, or step-by-step instructions. If the context does not contain the answer or if there is insufficient information to answer the question, you MUST respond with exactly: 'Information not available.' and nothing else. Do not make up a response, extrapolate, or use outside knowledge.\n\n"
+            "Answer the question using ONLY the relevant context below. Use the '[Official Service Specification Profile]' chunk as the absolute primary authority for structured requirements, SLAs, fees, and required documents. Use the '[User Manual & Guidelines]' chunks for details, descriptions, or step-by-step instructions.\n\n"
+            "REASONING & LOGICAL DEDUCTION:\n"
+            "- You should use logical deduction from the structured fields (such as 'Where to Apply', 'Fees', 'SLA', 'Department') to answer conversational queries. For example, if the user asks 'Can I apply offline?' and the context specifies 'Where to Apply: Sewa Setu Kendra, Online', you should answer: 'No, you can only apply online or by visiting a Sewa Setu Kendra center.' rather than saying 'Information not available.'\n"
+            "- If the user asks about the issuing authority and the context lists 'Department: Revenue and disaster management Department', state that the service is issued/managed by the Revenue and Disaster Management Department.\n"
+            "- Use the 'Information not available.' fallback ONLY when the service, topic, or context is completely absent (e.g. queries about driver license, passport, or services not in the database).\n\n"
+            "If the context does not contain the answer or if there is insufficient information to answer the question, you MUST respond with exactly: 'Information not available.' and nothing else. Do not make up a response, extrapolate, or use outside knowledge.\n\n"
             "CRITICAL LANGUAGE INSTRUCTION:\n"
             "- You MUST write your entire response in English. Under no circumstances should you respond in Hindi or any language other than English. If the retrieved context is in Hindi, translate it and respond in English.\n\n"
+            "UNDERSTAND USER INTENT:\n"
+            "- If the user expresses a desire to obtain, make, register, or apply for a service (e.g., 'I want to apply for ST certificate', 'I want to make a marriage certificate'), it means they are asking for the application process. In such cases, you MUST prioritize explaining the step-by-step application process/instructions from the '[User Manual & Guidelines]' chunk (e.g. registration, login, searching the scheme, uploading documents, fee payment, receipt submission) instead of just dumping the required documents list.\n\n"
             "CRITICAL REQUIREMENT FOR REQUIRED DOCUMENTS:\n"
             "- You MUST retrieve the list of required documents ONLY from the '[Official Service Specification Profile]' section. Do NOT use or look at '[User Manual & Guidelines]' for listing required documents, as it may be incomplete, truncated, or conflicting.\n"
             "- You MUST list EVERY single document category (Category [1], Category [2], Category [3], Category [4], etc.) present under the '## Required Documents' section in '[Official Service Specification Profile]'.\n"
@@ -319,6 +347,7 @@ async def chat_with_bot(request: ChatRequest):
             "- Format the output exactly like the context. For example:\n"
             "  - Category [X]: Name (Mandatory/अनिवार्य: Yes or No)\n"
             "    * Option X.Y: Name\n\n"
+            "Write the response in clear English. Use bullet points and clean formatting.\n\n"
         )
         if retrieved_context:
             system_instruction += f"Relevant Context:\n{retrieved_context}\n\n"

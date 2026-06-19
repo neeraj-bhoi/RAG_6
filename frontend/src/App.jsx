@@ -482,6 +482,22 @@ function App() {
                     </div>
                   </div>
                 )}
+
+                {details.form_fields && details.form_fields.length > 0 && (
+                  <div className="detail-section">
+                    <div className="detail-section-title">{t.form_fields}</div>
+                    <div className="fields-grid">
+                      {details.form_fields.map((field, idx) => (
+                        <div key={idx} className="field-row">
+                          <div className="field-label">{field.label}</div>
+                          <div className="field-type">
+                            {field.input_type || 'text'} {field.data_type ? `(${field.data_type})` : ''}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               <div className="detail-text-secondary" style={{ textAlign: 'center', marginTop: '40px' }}>Select a service to view details.</div>

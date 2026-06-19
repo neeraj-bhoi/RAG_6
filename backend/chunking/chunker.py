@@ -193,4 +193,25 @@ def convert_json_to_markdown(json_data, lang="en", exclude_form_fields=False):
             if label:
                 md.append(f"- {lbl['field_label']}: {label} ({lbl['input_type']}: {input_type}, {lbl['data_type']}: {data_type})")
                 
+    # PDF Links / Documents
+    pdf_links = json_data.get("pdf_links", [])
+    if pdf_links:
+        section_title = "Available PDF Documents" if lang == "en" else "उपलब्ध पीडीएफ दस्तावेज"
+        md.append(f"\n## {section_title}")
+        for link in pdf_links:
+            l_type = link.get("type", "")
+            l_text = link.get("text", "").strip()
+            l_url = link.get("url", "").strip()
+            
+            if l_type == "sla_details":
+                type_desc = "Service SLA Details PDF" if lang == "en" else "सेवा एसएलए विवरण पीडीएफ (Service SLA Details PDF)"
+            elif l_type == "user_manual":
+                type_desc = "User Manual PDF" if lang == "en" else "उपयोगकर्ता पुस्तिका पीडीएफ (User Manual PDF)"
+            elif l_type == "instruction":
+                type_desc = "Instruction PDF" if lang == "en" else "निर्देश पीडीएफ (Instruction PDF)"
+            else:
+                type_desc = "Document Format PDF" if lang == "en" else "दस्तावेज़ प्रारूप पीडीएफ (Document Format PDF)"
+            
+            md.append(f"- **{type_desc}**: {l_text} (URL: {l_url})")
+            
     return "\n".join(md)
