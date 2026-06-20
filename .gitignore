@@ -1,0 +1,40 @@
+# Python / virtualenv
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+ENV/
+env/
+
+# IDE / Project settings
+.vscode/
+.idea/
+.project
+.pydevproject
+
+# Node / Frontend dependencies
+frontend/node_modules/
+frontend/dist/
+node_modules/
+
+# Local databases and scraped directories
+chroma_db/
+data/scraped/
+data/ocr_output/
+data/pdfs/
+data/extracted_text/
+data/profiles/
+data/forms_json/
+data/raw_html/
+data/services_data.json
+processed_data/
+
+# Local environment configuration
+.env
+.env*.local
+
+# Logs and test outputs
+*.log
+test_results.md
