@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 from typing import List, Dict, Any, Tuple, Optional
 from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
@@ -27,31 +28,103 @@ collection = chroma_client.get_collection(COLLECTION_NAME)
 print(f"[RAG] Connected successfully to collection '{COLLECTION_NAME}' (Total count: {collection.count()})")
 
 
+def tokenize_text(text: str) -> set:
+    """
+    Preserves both standard word characters and Devanagari script characters (including combining marks).
+    """
+    cleaned = re.sub(r'[^\w\u0900-\u097f\s]', ' ', text.lower())
+    return set(cleaned.split())
+
+
+def rerank_chunks(
+    query: str, 
+    chunks: List[Dict[str, Any]], 
+    top_n: int = 4,
+    english_query: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """
+    Reranks the retrieved chunks using a hybrid semantic distance + lexical overlap score.
+    Returns:
+        The top_n reranked chunks.
+    """
+    stop_words = {
+        'a', 'an', 'the', 'for', 'to', 'is', 'of', 'in', 'on', 'at', 'by', 'with', 'from', 'what', 'which', 'who', 'how', 'why', 'where', 'when',
+        'के', 'लिए', 'है', 'का', 'की', 'में', 'को', 'और', 'से', 'पर', 'हो', 'कर', 'था', 'थी', 'थे', 'या', 'भी', 'ने', 'तक', 'जो', 'तो', 'ही'
+    }
+
+    # Pre-tokenize original Hindi query keywords
+    hi_words = tokenize_text(query)
+    hi_keywords = hi_words - stop_words
+    if not hi_keywords:
+        hi_keywords = hi_words
+
+    # Pre-tokenize English query keywords
+    en_query_to_use = english_query if english_query else query
+    en_words = tokenize_text(en_query_to_use)
+    en_keywords = en_words - stop_words
+    if not en_keywords:
+        en_keywords = en_words
+
+    scored_chunks = []
+    for chunk in chunks:
+        # Convert distance to semantic similarity (smaller distance -> higher similarity)
+        distance = chunk.get("distance", 1.0)
+        semantic_sim = max(0.0, 1.0 - (distance / 2.0))
+
+        # Lexical keyword overlap score based on chunk language
+        chunk_lang = chunk["metadata"].get("lang", "en")
+        chunk_words = tokenize_text(chunk["text"])
+
+        if chunk_lang == "hi":
+            # Match against original Hindi query keywords
+            overlap = len(hi_keywords.intersection(chunk_words))
+            lexical_score = overlap / len(hi_keywords) if hi_keywords else 0.0
+        else:
+            # Match against English/translated query keywords
+            overlap = len(en_keywords.intersection(chunk_words))
+            lexical_score = overlap / len(en_keywords) if en_keywords else 0.0
+
+        # Combine scores (semantic similarity weighted at 0.7, lexical overlap at 0.3)
+        hybrid_score = 0.7 * semantic_sim + 0.3 * lexical_score
+        chunk["hybrid_score"] = hybrid_score
+        scored_chunks.append(chunk)
+
+    # Sort chunks by hybrid score descending
+    scored_chunks.sort(key=lambda x: x["hybrid_score"], reverse=True)
+    
+    if os.getenv("DEBUG_PRINT_CHUNKS", "true").lower() == "true":
+        print(f"[RAG Reranking] Reranked {len(scored_chunks)} chunks:")
+        for idx, chunk in enumerate(scored_chunks):
+            meta = chunk["metadata"]
+            print(f"  Rank {idx+1}: Service={meta.get('service_id')}, Section={meta.get('section')}, Lang={meta.get('lang')}, Distance={chunk.get('distance'):.4f}, HybridScore={chunk['hybrid_score']:.4f}")
+    
+    return scored_chunks[:top_n]
+
+
 def retrieve_context(
     query: str, 
-    lang: str = "en", 
     service_id: Optional[int] = None, 
-    top_k: int = 8
+    top_k: int = 6,
+    english_query: Optional[str] = None
 ) -> Tuple[str, List[Dict[str, Any]]]:
     """
-    Retrieves top-k context chunks from ChromaDB for the given query.
-    Returns:
-        Formatted context string, and list of metadata dictionaries.
+    Retrieves top_k language-agnostic chunks from ChromaDB, reranks them, 
+    and returns a structured context string from the top 4 chunks.
     """
-    # E5 Query format convention requires "query: " prefix
-    query_text = f"query: {query}"
+    # Increase retrieve size if no specific service filter is specified
+    if service_id is None:
+        top_k = max(top_k, 15)
+
+    # Use english_query if available for embedding search prefix
+    search_query = english_query if english_query else query
+    query_text = f"query: {search_query}"
     query_vector = embedding_model.encode(query_text).tolist()
 
-    where_clause = {"lang": lang}
+    where_clause = None
     if service_id:
-        where_clause = {
-            "$and": [
-                {"lang": lang},
-                {"service_id": int(service_id)}
-            ]
-        }
+        where_clause = {"service_id": int(service_id)}
 
-    print(f"[RAG] Querying collection '{COLLECTION_NAME}' (lang='{lang}', service_id={service_id}, top_k={top_k})")
+    print(f"[RAG] Querying database (service_id={service_id}, top_k={top_k}, search_query='{search_query}')")
     results = collection.query(
         query_embeddings=[query_vector],
         n_results=top_k,
@@ -70,21 +143,17 @@ def retrieve_context(
                 "distance": distances[idx]
             })
 
-    # Debug print chunks to console
-    if os.getenv("DEBUG_PRINT_CHUNKS", "true").lower() == "true":
-        print(f"[RAG] Retrieved {len(top_chunks)} chunks:")
-        for idx, chunk in enumerate(top_chunks):
-            meta = chunk["metadata"]
-            print(f"  Chunk {idx+1}: Service={meta.get('service_id')}, Section={meta.get('section')}, Distance={chunk['distance']:.4f}")
-            print(f"  Content: {chunk['text'][:150]}...")
+    # Rerank the 6 chunks to select the top 4
+    top_4_chunks = rerank_chunks(query, top_chunks, top_n=4, english_query=english_query)
 
     # Build structured context string with labels
     context_parts = []
     metadata_list = []
-    for idx, chunk in enumerate(top_chunks):
+    for idx, chunk in enumerate(top_4_chunks):
         meta = chunk["metadata"]
         doc_type = meta.get("doc_type", "web")
-        label = "Official Service Specification Profile" if doc_type == "web" else "User Manual & Guidelines"
+        lang_label = "English" if meta.get("lang") == "en" else "Hindi"
+        label = f"Official Specification ({lang_label})" if doc_type == "web" else f"User Manual ({lang_label})"
         context_parts.append(
             f"--- Source {idx+1}: [{label}] ---\n"
             f"Service: {meta.get('service_name')} (ID: {meta.get('service_id')})\n"

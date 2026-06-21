@@ -12,10 +12,10 @@ from dotenv import load_dotenv
 
 try:
     from backend.rag import retrieve_context
-    from backend.llm_router import generate_answer, classify_service
+    from backend.llm_router import generate_answer, classify_service, detect_query_language, translate_query_to_english
 except ImportError:
     from rag import retrieve_context
-    from llm_router import generate_answer, classify_service
+    from llm_router import generate_answer, classify_service, detect_query_language, translate_query_to_english
 
 
 # Ensure stdout uses UTF-8 to prevent Windows-specific print emoji/char crashes
@@ -184,13 +184,16 @@ def chat_with_bot(request: ChatRequest):
     if not query:
         raise HTTPException(status_code=400, detail="Query text is required.")
 
-    # 2. Resolve language
-    lang = request.lang or request.language or "en"
-    # Basic Devanagari detection to auto-switch language to Hindi
-    for char in query:
-        if '\u0900' <= char <= '\u097F':
-            lang = "hi"
-            break
+    # 2. Detect query language using LLM (English, Hindi, or Hinglish)
+    query_lang = detect_query_language(query)
+    print(f"[API Chat] Detected language for query '{query}': '{query_lang}'")
+
+    english_query = query
+    if query_lang in ["hi", "hinglish"]:
+        try:
+            english_query = translate_query_to_english(query)
+        except Exception as e:
+            print(f"[API Chat] Failed to translate query: {e}")
 
     # 3. Resolve service_id / sno
     service_id = None
@@ -207,26 +210,39 @@ def chat_with_bot(request: ChatRequest):
     if not history and request.messages:
         history = request.messages[:-1]
 
-    # 5. Embed query and search ChromaDB via RAG module
-    top_k = int(os.getenv("TOP_K", "8"))
+    # 5. Embed query and search language-agnostic ChromaDB via RAG module
     context_string, metadata_list = retrieve_context(
         query=query,
-        lang=lang,
         service_id=service_id,
-        top_k=top_k
+        top_k=6,
+        english_query=english_query
     )
 
-    # 6. Construct prompt for Sarvam AI
-    lang_label = "English" if lang == "en" else "Hindi"
+    # 6. Construct prompt for Sarvam AI based on detected language
+    if query_lang == "en":
+        lang_label = "English"
+        lang_instruction = "Respond ONLY in English. Do not mix languages."
+        fallback_msg = "Information not available."
+    elif query_lang == "hi":
+        lang_label = "Hindi"
+        lang_instruction = "Respond ONLY in Hindi (Devanagari script). Do not mix languages."
+        fallback_msg = "जानकारी उपलब्ध नहीं है।"
+    else:  # hinglish
+        lang_label = "Hinglish"
+        lang_instruction = "Respond ONLY in Hinglish (Hindi language written in Roman script). Do not mix languages."
+        fallback_msg = "Jaankari uplabhd nahi hai."
+
     system_instruction = (
         "You are a helpful government services assistant for Sewa Setu Chhattisgarh portal.\n"
         "Answer the citizen's question using ONLY the provided context.\n"
-        f"- The user's question is in {lang_label}. Respond ONLY in {lang_label}. Do not mix languages.\n"
+        f"- The user's question is in {lang_label}. {lang_instruction}\n"
+        "- Note: The provided context may be in English. Even if the context is in English, you must translate the facts and answer the citizen's question in the target language specified above.\n"
+        "- Write a natural, conversational, and user-friendly answer that a human would want to hear. Do not just dump or copy-paste large blocks of raw text, page rotation comments, page numbers, or metadata tags from the context directly.\n"
         "- Be concise and factual. Do not hallucinate.\n"
         "- Do NOT output any thought process or intermediate reasoning inside <think> tags. Respond directly with the answer.\n"
-        f"- If the answer is not in the context, say exactly: \"{'Information not available.' if lang == 'en' else 'जानकारी उपलब्ध नहीं है।'}\"\n"
+        f"- If the answer is not in the context, say exactly: \"{fallback_msg}\"\n"
         "- For document lists, format as a numbered list.\n"
-        "- Always mention the service name and department at the end of your answer.\n\n"
+        "- Always mention the service name and department at the end of your answer in a natural way.\n\n"
         f"Relevant Context:\n{context_string}\n"
     )
 
@@ -239,6 +255,9 @@ def chat_with_bot(request: ChatRequest):
     # 7. Call Sarvam AI completions via LLM Router
     try:
         clean_reply = generate_answer(messages_for_llm)
+        if not clean_reply.strip():
+            # If the response is empty (e.g. stripped completely), fallback to default message
+            clean_reply = fallback_msg
         return {"response": clean_reply}
     except Exception as e:
         print(f"[LLM] Exception occurred during generation: {e}")
