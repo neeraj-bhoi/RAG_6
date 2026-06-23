@@ -218,32 +218,56 @@ def chat_with_bot(request: ChatRequest):
         english_query=english_query
     )
 
-    # 6. Construct prompt for Sarvam AI based on detected language
+    # 6. Resolve fallback message and handle early exit for out-of-scope
     if query_lang == "en":
-        lang_label = "English"
-        lang_instruction = "Respond ONLY in English. Do not mix languages."
         fallback_msg = "Information not available."
     elif query_lang == "hi":
-        lang_label = "Hindi"
-        lang_instruction = "Respond ONLY in Hindi (Devanagari script). Do not mix languages."
         fallback_msg = "जानकारी उपलब्ध नहीं है।"
     else:  # hinglish
-        lang_label = "Hinglish"
-        lang_instruction = "Respond ONLY in Hinglish (Hindi language written in Roman script). Do not mix languages."
         fallback_msg = "Jaankari uplabhd nahi hai."
+
+    if not context_string:
+        print(f"[API Chat] Context is empty (low similarity score). Returning early fallback message in language '{query_lang}': '{fallback_msg}'")
+        return {"response": fallback_msg}
+
+    if query_lang == "en":
+        lang_label = "English"
+        lang_instruction = (
+            "You MUST respond ENTIRELY in English using only the Roman alphabet. "
+            "Do NOT write in Devanagari script (Hindi characters) and do NOT use Hinglish words. "
+            "Every single word must be standard English."
+        )
+    elif query_lang == "hi":
+        lang_label = "Hindi"
+        lang_instruction = (
+            "You MUST respond ENTIRELY in Hindi using Devanagari script (देवनागरी लिपि). "
+            "Do NOT write in English or use Roman alphabet/Latin characters. "
+            "Every single word must be written in Devanagari."
+        )
+    else:  # hinglish
+        lang_label = "Hinglish"
+        lang_instruction = (
+            "You MUST respond ENTIRELY in Hinglish (Hindi language written in Roman alphabet script). "
+            "Do NOT use Devanagari script (Hindi characters) and do NOT write in pure English. "
+            "All characters must be Roman/Latin letters. (Example: 'Aapka domicile certificate 7 din me banega')"
+        )
 
     system_instruction = (
         "You are a helpful government services assistant for Sewa Setu Chhattisgarh portal.\n"
         "Answer the citizen's question using ONLY the provided context.\n"
-        f"- The user's question is in {lang_label}. {lang_instruction}\n"
-        "- Note: The provided context may be in English. Even if the context is in English, you must translate the facts and answer the citizen's question in the target language specified above.\n"
-        "- Write a natural, conversational, and user-friendly answer that a human would want to hear. Do not just dump or copy-paste large blocks of raw text, page rotation comments, page numbers, or metadata tags from the context directly.\n"
-        "- Be concise and factual. Do not hallucinate.\n"
+        f"- The user's query language is {lang_label}.\n"
+        f"- LANGUAGE AND SCRIPT RULES:\n"
+        f"  {lang_instruction}\n"
+        "- Translate the facts in the context into the target language specified above. Do not mix scripts or write in a script different from the target language rule.\n"
+        "- Write a natural, conversational, and user-friendly answer. Do not just dump or copy-paste large blocks of raw text, page numbers, or metadata tags.\n"
+        "- Avoid repetition: Do not repeat sentences, paragraphs, list items, or divisions. If the context has duplicate or redundant information, summarize it uniquely.\n"
+        "- Be concise and factual. Do not hallucinate or make assumptions.\n"
         "- Do NOT output any thought process or intermediate reasoning inside <think> tags. Respond directly with the answer.\n"
-        f"- If the answer is not in the context, say exactly: \"{fallback_msg}\"\n"
-        "- For document lists, format as a numbered list.\n"
+        f"- FALLBACK RULE: If the answer is not in the context, you MUST output exactly: \"{fallback_msg}\"\n"
+        "  Do not add any greetings, signatures, or extra words. Output only that exact fallback string.\n"
         "- Always mention the service name and department at the end of your answer in a natural way.\n\n"
-        f"Relevant Context:\n{context_string}\n"
+        f"Relevant Context:\n{context_string}\n\n"
+        f"FINAL REMINDER: {lang_instruction}"
     )
 
     messages_for_llm = [{"role": "system", "content": system_instruction}]

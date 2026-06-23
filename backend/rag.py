@@ -132,11 +132,16 @@ def retrieve_context(
     )
 
     top_chunks = []
+    seen_texts = set()
     if results and "documents" in results and results["documents"]:
         docs = results["documents"][0]
         metas = results["metadatas"][0]
         distances = results["distances"][0]
         for idx, (doc, meta) in enumerate(zip(docs, metas)):
+            normalized = " ".join(doc.strip().split())
+            if normalized in seen_texts:
+                continue
+            seen_texts.add(normalized)
             top_chunks.append({
                 "text": doc, 
                 "metadata": meta, 
@@ -146,6 +151,12 @@ def retrieve_context(
     # Rerank the 6 chunks to select the top 4
     top_4_chunks = rerank_chunks(query, top_chunks, top_n=4, english_query=english_query)
 
+    # If the top match has a very low hybrid score, the query is likely out-of-scope
+    if top_4_chunks and top_4_chunks[0].get("hybrid_score", 0.0) < 0.35:
+        print(f"[RAG] Warning: Top hybrid score {top_4_chunks[0]['hybrid_score']:.4f} is below threshold 0.35. Treating as out-of-scope.")
+        return "", []
+
+
     # Build structured context string with labels
     context_parts = []
     metadata_list = []
@@ -154,11 +165,18 @@ def retrieve_context(
         doc_type = meta.get("doc_type", "web")
         lang_label = "English" if meta.get("lang") == "en" else "Hindi"
         label = f"Official Specification ({lang_label})" if doc_type == "web" else f"User Manual ({lang_label})"
+        
+        # Clean EasyOCR character mistranslations
+        cleaned_text = chunk['text']
+        cleaned_text = re.sub(r'\b[Ll]०\b', '10', cleaned_text)
+        cleaned_text = re.sub(r'\b[Ll]२\b', '12', cleaned_text)
+        cleaned_text = cleaned_text.replace("L०", "10").replace("L२", "12").replace("l०", "10").replace("l२", "12")
+        
         context_parts.append(
             f"--- Source {idx+1}: [{label}] ---\n"
             f"Service: {meta.get('service_name')} (ID: {meta.get('service_id')})\n"
             f"Section: {meta.get('section')}\n"
-            f"Content:\n{chunk['text']}\n"
+            f"Content:\n{cleaned_text}\n"
         )
         metadata_list.append(meta)
 

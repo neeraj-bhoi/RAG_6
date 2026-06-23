@@ -172,29 +172,33 @@ def detect_query_language(query: str) -> str:
 
             print(f"[LLM Router] Language detection stripped reply: '{reply_clean}'")
             
+            def extract_lang(text: str) -> Optional[str]:
+                found = re.findall(r'\b(english|hindi|hinglish)\b', text.lower())
+                if found:
+                    if 'hinglish' in found:
+                        return 'hinglish'
+                    if 'english' in found:
+                        return 'en'
+                    if 'hindi' in found:
+                        return 'hi'
+                return None
+
             # 1. Check stripped response
-            if 'hinglish' in reply_clean:
-                return 'hinglish'
-            elif 'hindi' in reply_clean:
-                return 'hi'
-            elif 'english' in reply_clean or 'en' in reply_clean:
-                return 'en'
+            detected = extract_lang(reply_clean)
+            if detected:
+                return detected
                 
             # 2. Fallback: check raw content response
-            if 'hinglish' in reply_lower:
-                return 'hinglish'
-            elif 'hindi' in reply_lower:
-                return 'hi'
-            elif 'english' in reply_lower or 'en' in reply_lower:
-                return 'en'
+            detected = extract_lang(reply_lower)
+            if detected:
+                return detected
 
             # 3. Fallback: check reasoning_content
-            if 'hinglish' in reasoning_lower:
-                return 'hinglish'
-            elif 'hindi' in reasoning_lower:
-                return 'hi'
-            elif 'english' in reasoning_lower or 'en' in reasoning_lower:
-                return 'en'
+            detected = extract_lang(reasoning_lower)
+            if detected:
+                return detected
+        else:
+            print(f"[LLM Router] Language detection API call failed with status code {res.status_code}")
     except Exception as e:
         print(f"[LLM Router] Language detection failed: {e}")
         

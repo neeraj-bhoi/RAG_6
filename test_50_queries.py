@@ -192,7 +192,40 @@ QUERIES = [
         "en": "What is the consequence if a person is elected to a local authority or constitutional body based on a caste certificate that is later cancelled under Section 8?",
         "hi": "यदि कोई व्यक्ति ऐसे जाति प्रमाण पत्र के आधार पर स्थानीय प्राधिकरण या संवैधानिक निकाय के लिए चुना जाता है जिसे बाद में धारा 8 के तहत रद्द कर दिया जाता है, तो इसका क्या परिणाम होता है?"
     },
-    # 6. Out of Scope
+    # 6. Ordinary Gazette Notification for Name Change
+    {
+        "en": "What is the fee and challan head for name change publication in the ordinary gazette?",
+        "hi": "साधारण राजपत्र में नाम परिवर्तन प्रकाशन के लिए शुल्क और चालान हेड क्या है?"
+    },
+    {
+        "en": "What are the required documents to apply for Ordinary Gazette Notification for Name Change?",
+        "hi": "नाम परिवर्तन के लिए साधारण राजपत्र अधिसूचना के लिए आवेदन करने के लिए आवश्यक दस्तावेज क्या हैं?"
+    },
+    {
+        "en": "How old can the notarized affidavit and newspaper notice be for the name change gazette application?",
+        "hi": "नाम परिवर्तन राजपत्र आवेदन के लिए नोटरीकृत हलफनामा और समाचार पत्र का नोटिस कितना पुराना हो सकता है?"
+    },
+    {
+        "en": "Under which form number and stamp paper value should the notarized affidavit be submitted for a name change?",
+        "hi": "नाम परिवर्तन के लिए नोटरीकृत हलफनामा किस फॉर्म संख्या और स्टांप पेपर मूल्य के तहत जमा किया जाना चाहिए?"
+    },
+    {
+        "en": "What is the processing time limit (SLA) for the Ordinary Gazette Notification for Name Change?",
+        "hi": "नाम परिवर्तन के लिए साधारण राजपत्र अधिसूचना के लिए प्रसंस्करण समय सीमा (SLA) क्या है?"
+    },
+    {
+        "en": "Which department is responsible for issuing the Ordinary Gazette Notification for Name Change?",
+        "hi": "नाम परिवर्तन के लिए साधारण राजपत्र अधिसूचना जारी करने के लिए कौन सा विभाग जिम्मेदार है?"
+    },
+    {
+        "en": "Is the publication of the name change notice required in a local newspaper, and which form is used for it?",
+        "hi": "क्या स्थानीय समाचार पत्र में नाम परिवर्तन नोटिस का प्रकाशन आवश्यक है, और इसके लिए किस फॉर्म का उपयोग किया जाता है?"
+    },
+    {
+        "en": "What form is used for the deed of name change and how many witnesses are required?",
+        "hi": "नाम परिवर्तन के विलेख (deed) के लिए किस फॉर्म का उपयोग किया जाता है और कितने गवाहों की आवश्यकता होती है?"
+    },
+    # 7. Out of Scope
     {
         "en": "How do I apply for a new passport in Chhattisgarh?",
         "hi": "छत्तीसगढ़ में नया पासपोर्ट आवेदन कैसे करें?"
@@ -216,6 +249,14 @@ QUERIES = [
     {
         "en": "What are the rules and guidelines for traffic violations in Chhattisgarh?",
         "hi": "छत्तीसगढ़ में यातायात उल्लंघन के क्या नियम और दिशा-निर्देश हैं?"
+    },
+    {
+        "en": "How do I check my PF balance or EPF claim status in Chhattisgarh?",
+        "hi": "छत्तीसगढ़ में मैं अपना पीएफ बैलेंस या ईपीएफ दावा स्थिति कैसे जांचूं?"
+    },
+    {
+        "en": "What is the process to link Aadhaar card with my mobile number?",
+        "hi": "आधार कार्ड को अपने मोबाइल नंबर से लिंक करने की प्रक्रिया क्या है?"
     }
 ]
 
